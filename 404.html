@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instalação Instável</title>
+    <meta name="description" content="Protótipo de jogo de fuga em uma instalação digital instável feito com HTML, CSS e JavaScript puro." />
+    <meta name="theme-color" content="#0b1020" />
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <main class="app">
+      <section class="panel screen active" id="start-screen">
+        <div class="card">
+          <h1>Instalação Instável</h1>
+          <p>
+            A instalação entrou em colapso parcial. Recupere o núcleo de acesso
+            e alcance a saída antes da explosão final.
+          </p>
+          <button id="start-button" type="button">Iniciar missão</button>
+        </div>
+      </section>
+
+      <section class="panel screen" id="game-screen" aria-live="polite">
+        <header class="hud">
+          <div class="hud-block">
+            <strong>Missão:</strong>
+            <span id="mission-text">Recupere o núcleo e desbloqueie a saída.</span>
+          </div>
+          <div class="hud-block">
+            <strong>Tempo:</strong>
+            <span id="timer-text">45s</span>
+          </div>
+          <div class="hud-block">
+            <strong>Saída:</strong>
+            <span id="status-text">Bloqueada</span>
+          </div>
+        </header>
+
+        <p class="message" id="feedback-text" role="status" aria-live="polite">
+          Encontre o núcleo antes do colapso total.
+        </p>
+
+        <div class="legend" aria-label="Legenda do mapa">
+          <span><i class="legend-swatch player-swatch"></i>Jogador</span>
+          <span><i class="legend-swatch item-swatch"></i>Núcleo</span>
+          <span><i class="legend-swatch exit-swatch"></i>Saída</span>
+          <span><i class="legend-swatch fire-swatch"></i>Perigo</span>
+        </div>
+
+        <div class="game-shell">
+          <div class="game-board" id="game-board">
+            <div class="player" id="player" aria-label="Jogador"></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <p>Use as setas do teclado ou WASD para se mover.</p>
+          <button id="restart-button" type="button">Reiniciar missão</button>
+        </div>
+      </section>
+
+      <section class="panel screen" id="end-screen">
+        <div class="card">
+          <h2 id="end-title">Fim</h2>
+          <p id="end-message"></p>
+          <button id="play-again-button" type="button">Jogar novamente</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/map.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
