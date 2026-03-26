@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="css/style.css" />
   </head>
   <body>
-    <main class="app">
+    <main class="app" id="app-root">
       <section class="panel screen active" id="start-screen">
         <div class="card">
           <h1>Instalação Instável</h1>
@@ -21,7 +21,7 @@
 
       <section class="panel screen" id="game-screen" aria-live="polite">
         <header class="hud">
-          <div class="hud-block">
+          <div class="hud-block hud-block-wide">
             <strong>Missão:</strong>
             <span id="mission-text">Recupere o núcleo e desbloqueie a saída.</span>
           </div>
@@ -35,6 +35,12 @@
           </div>
         </header>
 
+        <div class="mission-progress" aria-label="Progresso da missão">
+          <span class="progress-step" id="progress-core">Encontrar núcleo</span>
+          <span class="progress-step" id="progress-activate">Ativar núcleo</span>
+          <span class="progress-step" id="progress-exit">Escapar</span>
+        </div>
+
         <p class="message" id="feedback-text" role="status" aria-live="polite">
           Encontre o núcleo antes do colapso total.
         </p>
@@ -43,17 +49,19 @@
           <span><i class="legend-swatch player-swatch"></i>Jogador</span>
           <span><i class="legend-swatch item-swatch"></i>Núcleo</span>
           <span><i class="legend-swatch exit-swatch"></i>Saída</span>
+          <span><i class="legend-swatch drone-swatch"></i>Drone</span>
           <span><i class="legend-swatch fire-swatch"></i>Perigo</span>
         </div>
 
         <div class="game-shell">
           <div class="game-board" id="game-board">
             <div class="player" id="player" aria-label="Jogador"></div>
+            <div class="drone" id="drone" aria-label="Drone de patrulha"></div>
           </div>
         </div>
 
         <div class="controls">
-          <p>Use as setas do teclado ou WASD para se mover.</p>
+          <p>Use as setas ou WASD para mover. Pressione E ao lado do núcleo.</p>
           <button id="restart-button" type="button">Reiniciar missão</button>
         </div>
       </section>

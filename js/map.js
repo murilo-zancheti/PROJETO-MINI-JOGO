@@ -40,11 +40,19 @@ function createLevelConfig() {
     columns: initialLayout[0].length,
     rows: initialLayout.length,
     timeLimit: 45,
-    mission: 'Recupere o núcleo de acesso e escape antes da explosão.',
+    mission: 'Recupere e ative o núcleo para escapar.',
     start: { x: 1, y: 1 },
     initialLayout,
     exit: findTilePosition(initialLayout, TILE_TYPES.GOAL),
-    item: findTilePosition(initialLayout, TILE_TYPES.ITEM)
+    core: findTilePosition(initialLayout, TILE_TYPES.ITEM),
+    drone: {
+      start: { x: 4, y: 5 },
+      axis: 'x',
+      min: 4,
+      max: 6,
+      direction: 1,
+      speed: 650
+    }
   };
 }
 

@@ -1,18 +1,19 @@
 :root {
-  --bg: #0b1020;
-  --panel-border: #2c3d69;
+  --bg: #060912;
+  --panel-border: #4d5b85;
   --text: #e8f0ff;
-  --muted: #91a4cf;
-  --floor: #18233f;
-  --wall: #31456e;
-  --goal-locked: #3e655b;
-  --goal-open: #29d398;
+  --muted: #96a4d3;
+  --floor: #11182f;
+  --wall: #3a4b74;
+  --goal-locked: #3f5c51;
+  --goal-open: #31d89c;
   --hazard: #ff6b6b;
-  --item: #7ce7ff;
+  --item: #6ef2ff;
   --player: #ffd166;
-  --button: #4f7cff;
-  --button-hover: #6c91ff;
-  --shadow: rgba(0, 0, 0, 0.25);
+  --drone: #ff3d81;
+  --button: #476cf7;
+  --button-hover: #6b8dff;
+  --shadow: rgba(0, 0, 0, 0.3);
   --cell-size: 48px;
   --cell-gap: 4px;
 }
@@ -24,14 +25,15 @@
 body {
   margin: 0;
   min-height: 100vh;
-  font-family: Arial, Helvetica, sans-serif;
-  background: radial-gradient(circle at top, #101833 0%, var(--bg) 65%);
+  font-family: 'Courier New', Courier, monospace;
+  letter-spacing: 0.02em;
+  background: radial-gradient(circle at top, #15203d 0%, var(--bg) 68%);
   color: var(--text);
 }
 
 button {
-  border: 0;
-  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
   padding: 0.85rem 1.4rem;
   font: inherit;
   font-weight: 700;
@@ -39,6 +41,7 @@ button {
   background: var(--button);
   cursor: pointer;
   transition: transform 0.15s ease, background 0.15s ease;
+  text-transform: uppercase;
 }
 
 button:hover,
@@ -54,6 +57,10 @@ button:focus-visible {
   padding: 24px;
 }
 
+.app.urgent {
+  animation: screen-shake 0.28s infinite;
+}
+
 .screen {
   display: none;
   width: min(100%, 900px);
@@ -65,9 +72,9 @@ button:focus-visible {
 
 .card,
 #game-screen {
-  background: rgba(18, 26, 48, 0.92);
+  background: rgba(12, 18, 36, 0.95);
   border: 1px solid var(--panel-border);
-  border-radius: 20px;
+  border-radius: 12px;
   box-shadow: 0 20px 40px var(--shadow);
 }
 
@@ -89,7 +96,8 @@ button:focus-visible {
 
 .hud,
 .controls,
-.legend {
+.legend,
+.mission-progress {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -102,11 +110,36 @@ button:focus-visible {
 }
 
 .hud-block,
-.message {
+.message,
+.progress-step {
   padding: 10px 14px;
-  background: rgba(11, 16, 32, 0.38);
+  background: rgba(11, 16, 32, 0.45);
   border: 1px solid rgba(145, 164, 207, 0.18);
-  border-radius: 12px;
+  border-radius: 8px;
+}
+
+.hud-block-wide {
+  flex: 1 1 260px;
+}
+
+.mission-progress {
+  margin-bottom: 12px;
+}
+
+.progress-step {
+  font-size: 0.82rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.progress-step.active {
+  color: var(--player);
+  border-color: rgba(255, 209, 102, 0.55);
+}
+
+.progress-step.completed {
+  color: var(--goal-open);
+  border-color: rgba(49, 216, 156, 0.45);
 }
 
 .message {
@@ -117,7 +150,7 @@ button:focus-visible {
 .legend {
   margin-bottom: 18px;
   color: var(--muted);
-  font-size: 0.95rem;
+  font-size: 0.92rem;
 }
 
 .legend span {
@@ -145,6 +178,10 @@ button:focus-visible {
   background: var(--goal-open);
 }
 
+.drone-swatch {
+  background: var(--drone);
+}
+
 .fire-swatch {
   background: var(--hazard);
 }
@@ -156,9 +193,9 @@ button:focus-visible {
 
 .game-shell {
   overflow: auto;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--panel-border);
-  background: rgba(11, 16, 32, 0.65);
+  background: rgba(7, 11, 26, 0.82);
   padding: 16px;
 }
 
@@ -172,9 +209,9 @@ button:focus-visible {
 .cell {
   width: var(--cell-size);
   height: var(--cell-size);
-  border-radius: 12px;
+  border-radius: 6px;
   background: var(--floor);
-  border: 1px solid rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .cell.wall {
@@ -195,19 +232,56 @@ button:focus-visible {
 }
 
 .cell.item {
-  background: linear-gradient(135deg, #b3f3ff 0%, var(--item) 100%);
+  background: linear-gradient(135deg, #a3f9ff 0%, var(--item) 100%);
+  border: 2px solid rgba(111, 242, 255, 0.95);
+  animation: core-pulse 1s steps(2, end) infinite;
 }
 
-.player {
+.cell.item.adjacent {
+  box-shadow: 0 0 0 3px rgba(111, 242, 255, 0.2), 0 0 20px rgba(111, 242, 255, 0.55);
+}
+
+.player,
+.drone {
   position: absolute;
   width: var(--cell-size);
   height: var(--cell-size);
-  border-radius: 12px;
-  background: var(--player);
+  border-radius: 6px;
   border: 3px solid rgba(11, 16, 32, 0.45);
   box-shadow: 0 12px 20px rgba(0, 0, 0, 0.22);
-  transition: top 0.12s ease, left 0.12s ease;
   z-index: 2;
+}
+
+.player {
+  background: var(--player);
+  transition: top 0.12s ease, left 0.12s ease;
+}
+
+.drone {
+  background: var(--drone);
+  transition: top 0.18s linear, left 0.18s linear;
+  z-index: 1;
+}
+
+@keyframes core-pulse {
+  0%,
+  100% {
+    transform: scale(0.96);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  }
+
+  50% {
+    transform: scale(1);
+    box-shadow: 0 0 0 2px rgba(111, 242, 255, 0.25), 0 0 18px rgba(111, 242, 255, 0.6);
+  }
+}
+
+@keyframes screen-shake {
+  0% { transform: translate(0, 0); }
+  25% { transform: translate(2px, -2px); }
+  50% { transform: translate(-2px, 2px); }
+  75% { transform: translate(2px, 1px); }
+  100% { transform: translate(0, 0); }
 }
 
 @media (max-width: 720px) {

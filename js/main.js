@@ -1,10 +1,14 @@
+const INTERACTION_KEY = 'e';
+
 const gameState = {
   status: 'start',
   player: { ...LEVEL_ONE.start },
-  hasItem: false,
   timeLeft: LEVEL_ONE.timeLimit,
   timerId: null,
-  layout: cloneLayout(LEVEL_ONE.initialLayout)
+  droneTimerId: null,
+  layout: cloneLayout(LEVEL_ONE.initialLayout),
+  coreActivated: false,
+  drone: { ...LEVEL_ONE.drone.start, direction: LEVEL_ONE.drone.direction }
 };
 
 const screens = {
@@ -13,12 +17,17 @@ const screens = {
   end: document.getElementById('end-screen')
 };
 
+const appRootElement = document.getElementById('app-root');
 const boardElement = document.getElementById('game-board');
 const playerElement = document.getElementById('player');
+const droneElement = document.getElementById('drone');
 const missionTextElement = document.getElementById('mission-text');
 const timerTextElement = document.getElementById('timer-text');
 const statusTextElement = document.getElementById('status-text');
 const feedbackTextElement = document.getElementById('feedback-text');
+const progressCoreElement = document.getElementById('progress-core');
+const progressActivateElement = document.getElementById('progress-activate');
+const progressExitElement = document.getElementById('progress-exit');
 const endTitleElement = document.getElementById('end-title');
 const endMessageElement = document.getElementById('end-message');
 const startButton = document.getElementById('start-button');
@@ -26,7 +35,7 @@ const restartButton = document.getElementById('restart-button');
 const playAgainButton = document.getElementById('play-again-button');
 
 function isLevelConfigValid(level) {
-  return Boolean(level.exit && level.item && level.columns > 0 && level.rows > 0);
+  return Boolean(level.exit && level.core && level.columns > 0 && level.rows > 0 && level.drone);
 }
 
 function showScreen(screenName) {
@@ -42,6 +51,16 @@ function getCellSize() {
 function getCellGap() {
   const styles = window.getComputedStyle(boardElement);
   return Number.parseInt(styles.columnGap, 10) || 0;
+}
+
+function getStepSize() {
+  return getCellSize() + getCellGap();
+}
+
+function positionElement(element, x, y) {
+  const step = getStepSize();
+  element.style.left = `${x * step}px`;
+  element.style.top = `${y * step}px`;
 }
 
 function configureBoardGrid() {
@@ -79,12 +98,6 @@ function buildBoard() {
   boardElement.prepend(fragment);
 }
 
-function updatePlayerPosition() {
-  const step = getCellSize() + getCellGap();
-  playerElement.style.left = `${gameState.player.x * step}px`;
-  playerElement.style.top = `${gameState.player.y * step}px`;
-}
-
 function getTile(x, y) {
   return gameState.layout[y]?.[x];
 }
@@ -105,43 +118,100 @@ function setFeedbackMessage(message) {
   feedbackTextElement.textContent = message;
 }
 
-function updateMissionUi() {
-  missionTextElement.textContent = LEVEL_ONE.mission;
-  timerTextElement.textContent = `${gameState.timeLeft}s`;
-  statusTextElement.textContent = gameState.hasItem ? 'Desbloqueada' : 'Bloqueada';
+function clearStepState(stepElement) {
+  stepElement.classList.remove('active', 'completed');
+}
 
-  if (!LEVEL_ONE.exit) {
-    setFeedbackMessage('Mapa inválido: saída não encontrada.');
+function updateProgressUi() {
+  [progressCoreElement, progressActivateElement, progressExitElement].forEach(clearStepState);
+
+  if (!gameState.coreActivated) {
+    progressCoreElement.classList.add('active');
+  } else {
+    progressCoreElement.classList.add('completed');
+    progressActivateElement.classList.add('completed');
+    progressExitElement.classList.add('active');
+  }
+}
+
+function isAdjacentToCore() {
+  if (gameState.coreActivated) {
+    return false;
+  }
+
+  const distanceX = Math.abs(gameState.player.x - LEVEL_ONE.core.x);
+  const distanceY = Math.abs(gameState.player.y - LEVEL_ONE.core.y);
+  return distanceX + distanceY === 1;
+}
+
+function updateCoreHighlight() {
+  const coreCell = getCellElement(LEVEL_ONE.core.x, LEVEL_ONE.core.y);
+  if (!coreCell) {
     return;
   }
 
+  coreCell.classList.toggle('adjacent', isAdjacentToCore());
+}
+
+function updateMissionUi() {
+  missionTextElement.textContent = LEVEL_ONE.mission;
+  timerTextElement.textContent = `${gameState.timeLeft}s`;
+  statusTextElement.textContent = gameState.coreActivated ? 'Desbloqueada' : 'Bloqueada';
+
   const exitCell = getCellElement(LEVEL_ONE.exit.x, LEVEL_ONE.exit.y);
   if (exitCell) {
-    exitCell.classList.toggle('unlocked', gameState.hasItem);
+    exitCell.classList.toggle('unlocked', gameState.coreActivated);
+  }
+
+  appRootElement.classList.toggle('urgent', gameState.coreActivated);
+  updateCoreHighlight();
+  updateProgressUi();
+}
+
+function clearTimer(timerKey) {
+  if (gameState[timerKey]) {
+    window.clearInterval(gameState[timerKey]);
+    gameState[timerKey] = null;
   }
 }
 
-function clearTimer() {
-  if (gameState.timerId) {
-    window.clearInterval(gameState.timerId);
-    gameState.timerId = null;
-  }
+function clearRuntimeTimers() {
+  clearTimer('timerId');
+  clearTimer('droneTimerId');
 }
 
 function finishGame(status, message) {
-  clearTimer();
+  clearRuntimeTimers();
   gameState.status = status;
   endTitleElement.textContent = status === 'win' ? 'Vitória' : 'Derrota';
   endMessageElement.textContent = message;
+  appRootElement.classList.remove('urgent');
   showScreen('end');
 }
 
+function checkDroneCollision() {
+  if (gameState.player.x === gameState.drone.x && gameState.player.y === gameState.drone.y) {
+    finishGame('lose', 'O drone de patrulha interceptou sua fuga.');
+    return true;
+  }
+
+  return false;
+}
+
+function updatePlayerPosition() {
+  positionElement(playerElement, gameState.player.x, gameState.player.y);
+}
+
+function updateDronePosition() {
+  positionElement(droneElement, gameState.drone.x, gameState.drone.y);
+}
+
 function startTimer() {
-  clearTimer();
+  clearTimer('timerId');
 
   gameState.timerId = window.setInterval(() => {
     if (gameState.status !== 'playing') {
-      clearTimer();
+      clearTimer('timerId');
       return;
     }
 
@@ -154,12 +224,54 @@ function startTimer() {
   }, 1000);
 }
 
+function moveDroneStep() {
+  if (gameState.status !== 'playing') {
+    return;
+  }
+
+  const nextDrone = { ...gameState.drone };
+  nextDrone[LEVEL_ONE.drone.axis] += nextDrone.direction;
+
+  if (nextDrone[LEVEL_ONE.drone.axis] > LEVEL_ONE.drone.max || nextDrone[LEVEL_ONE.drone.axis] < LEVEL_ONE.drone.min) {
+    nextDrone.direction *= -1;
+    nextDrone[LEVEL_ONE.drone.axis] = gameState.drone[LEVEL_ONE.drone.axis] + nextDrone.direction;
+  }
+
+  gameState.drone = nextDrone;
+  updateDronePosition();
+  checkDroneCollision();
+}
+
+function startDronePatrol() {
+  clearTimer('droneTimerId');
+  gameState.droneTimerId = window.setInterval(moveDroneStep, LEVEL_ONE.drone.speed);
+}
+
+function updateContextFeedback() {
+  if (gameState.status !== 'playing') {
+    return;
+  }
+
+  if (isAdjacentToCore()) {
+    setFeedbackMessage('Pressione E para ativar o núcleo.');
+    return;
+  }
+
+  if (gameState.coreActivated) {
+    setFeedbackMessage('Colapso crítico! Saia o mais rápido possível.');
+    return;
+  }
+
+  setFeedbackMessage('Evite o drone e localize o núcleo.');
+}
+
 function resetGameState() {
   gameState.status = 'playing';
   gameState.player = { ...LEVEL_ONE.start };
-  gameState.hasItem = false;
   gameState.timeLeft = LEVEL_ONE.timeLimit;
   gameState.layout = cloneLayout(LEVEL_ONE.initialLayout);
+  gameState.coreActivated = false;
+  gameState.drone = { ...LEVEL_ONE.drone.start, direction: LEVEL_ONE.drone.direction };
 }
 
 function resetGame() {
@@ -168,27 +280,33 @@ function resetGame() {
     return;
   }
 
-  clearTimer();
+  clearRuntimeTimers();
   resetGameState();
   buildBoard();
   showScreen('game');
   updatePlayerPosition();
+  updateDronePosition();
   updateMissionUi();
-  setFeedbackMessage('Encontre o núcleo antes do colapso total.');
+  updateContextFeedback();
   startTimer();
+  startDronePatrol();
 }
 
-function collectItem(x, y) {
-  gameState.hasItem = true;
-  setTile(x, y, TILE_TYPES.FLOOR);
+function activateCore() {
+  if (!isAdjacentToCore()) {
+    return;
+  }
 
-  const itemCell = getCellElement(x, y);
-  if (itemCell) {
-    itemCell.classList.remove('item');
+  gameState.coreActivated = true;
+  setTile(LEVEL_ONE.core.x, LEVEL_ONE.core.y, TILE_TYPES.FLOOR);
+
+  const coreCell = getCellElement(LEVEL_ONE.core.x, LEVEL_ONE.core.y);
+  if (coreCell) {
+    coreCell.classList.remove('item', 'adjacent');
   }
 
   updateMissionUi();
-  setFeedbackMessage('Núcleo recuperado. A saída foi desbloqueada.');
+  setFeedbackMessage('Núcleo ativado. O sistema entrou em colapso total! Corra para a saída.');
 }
 
 function tryMove(deltaX, deltaY) {
@@ -200,12 +318,15 @@ function tryMove(deltaX, deltaY) {
   const nextY = gameState.player.y + deltaY;
   const nextTile = getTile(nextX, nextY);
 
-  if (nextTile === undefined || nextTile === TILE_TYPES.WALL) {
+  if (nextTile === undefined || nextTile === TILE_TYPES.WALL || nextTile === TILE_TYPES.ITEM) {
+    if (nextTile === TILE_TYPES.ITEM) {
+      setFeedbackMessage('Núcleo detectado. Fique ao lado dele e pressione E.');
+    }
     return;
   }
 
-  if (nextTile === TILE_TYPES.GOAL && !gameState.hasItem) {
-    setFeedbackMessage('Saída bloqueada. Encontre o núcleo primeiro.');
+  if (nextTile === TILE_TYPES.GOAL && !gameState.coreActivated) {
+    setFeedbackMessage('Saída bloqueada. Ative o núcleo primeiro.');
     return;
   }
 
@@ -213,13 +334,12 @@ function tryMove(deltaX, deltaY) {
   gameState.player.y = nextY;
   updatePlayerPosition();
 
-  if (nextTile === TILE_TYPES.ITEM) {
-    collectItem(nextX, nextY);
+  if (checkDroneCollision()) {
     return;
   }
 
   if (nextTile === TILE_TYPES.GOAL) {
-    finishGame('win', 'Você recuperou o núcleo, liberou a saída e escapou da instalação.');
+    finishGame('win', 'Você ativou o núcleo, desviou do drone e escapou da instalação.');
     return;
   }
 
@@ -228,7 +348,8 @@ function tryMove(deltaX, deltaY) {
     return;
   }
 
-  setFeedbackMessage(gameState.hasItem ? 'Saída desbloqueada. Vá até a extração.' : 'Continue procurando o núcleo.');
+  updateMissionUi();
+  updateContextFeedback();
 }
 
 function handleKeydown(event) {
@@ -250,6 +371,9 @@ function handleKeydown(event) {
   } else if (key === 'arrowright' || key === 'd') {
     event.preventDefault();
     tryMove(1, 0);
+  } else if (key === INTERACTION_KEY) {
+    event.preventDefault();
+    activateCore();
   }
 }
 
@@ -257,9 +381,13 @@ startButton.addEventListener('click', resetGame);
 restartButton.addEventListener('click', resetGame);
 playAgainButton.addEventListener('click', resetGame);
 document.addEventListener('keydown', handleKeydown);
-window.addEventListener('resize', updatePlayerPosition);
+window.addEventListener('resize', () => {
+  updatePlayerPosition();
+  updateDronePosition();
+});
 
 configureBoardGrid();
 updateMissionUi();
 updatePlayerPosition();
+updateDronePosition();
 showScreen('start');
