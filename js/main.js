@@ -1,5 +1,21 @@
 const INTERACTION_KEY = 'e';
 
+const MESSAGES = {
+  invalidConfig: 'Não foi possível iniciar. Configuração do mapa incompleta.',
+  timeOver: 'Colapso total! Você não conseguiu escapar a tempo.',
+  droneHit: 'O drone de patrulha interceptou você.',
+  contextDoorEnergized: 'Porta energizada! Fuja imediatamente.',
+  contextCanEnergize: 'Pressione E para energizar a porta com o núcleo.',
+  contextCarryCore: 'Núcleo coletado. Leve-o até a porta.',
+  contextFindCore: 'Encontre o núcleo e evite o drone.',
+  blockedNeedEnergy: 'A porta está sem energia. Encontre o núcleo.',
+  blockedNeedEnergize: 'Fique ao lado da porta e pressione E para energizar.',
+  coreCollected: 'Núcleo coletado. Leve-o até a porta.',
+  doorEnergized: 'Porta energizada com sucesso! Saia agora.',
+  win: 'Você energizou a porta com o núcleo e escapou da instalação.',
+  hazardLose: 'As chamas bloquearam sua rota de fuga.'
+};
+
 const gameState = {
   status: 'start',
   player: { ...LEVEL_ONE.start },
@@ -203,7 +219,7 @@ function finishGame(status, message) {
 
 function checkDroneCollision() {
   if (gameState.player.x === gameState.drone.x && gameState.player.y === gameState.drone.y) {
-    finishGame('lose', 'O drone de patrulha interceptou sua fuga.');
+    finishGame('lose', MESSAGES.droneHit);
     return true;
   }
 
@@ -231,7 +247,7 @@ function startTimer() {
     timerTextElement.textContent = `${gameState.timeLeft}s`;
 
     if (gameState.timeLeft <= 0) {
-      finishGame('lose', 'O sistema entrou em colapso antes de você escapar.');
+      finishGame('lose', MESSAGES.timeOver);
     }
   }, 1000);
 }
@@ -265,21 +281,21 @@ function updateContextFeedback() {
   }
 
   if (gameState.doorEnergized) {
-    setFeedbackMessage('Porta energizada! Colapso crítico, fuja agora.');
+    setFeedbackMessage(MESSAGES.contextDoorEnergized);
     return;
   }
 
   if (isAdjacentToExit() && gameState.hasCore) {
-    setFeedbackMessage('Pressione E para energizar a porta com o núcleo.');
+    setFeedbackMessage(MESSAGES.contextCanEnergize);
     return;
   }
 
   if (gameState.hasCore) {
-    setFeedbackMessage('Leve o núcleo até a porta de extração.');
+    setFeedbackMessage(MESSAGES.contextCarryCore);
     return;
   }
 
-  setFeedbackMessage('Encontre o núcleo e evite o drone.');
+  setFeedbackMessage(MESSAGES.contextFindCore);
 }
 
 function resetGameState() {
@@ -294,7 +310,7 @@ function resetGameState() {
 
 function resetGame() {
   if (!isLevelConfigValid(LEVEL_ONE)) {
-    setFeedbackMessage('Não foi possível iniciar: a configuração do mapa está incompleta.');
+    setFeedbackMessage(MESSAGES.invalidConfig);
     return;
   }
 
@@ -320,7 +336,7 @@ function collectCore() {
   }
 
   updateMissionUi();
-  setFeedbackMessage('Núcleo coletado. Leve até a porta de extração.');
+  setFeedbackMessage(MESSAGES.coreCollected);
 }
 
 function energizeDoor() {
@@ -331,7 +347,7 @@ function energizeDoor() {
   gameState.hasCore = false;
   gameState.doorEnergized = true;
   updateMissionUi();
-  setFeedbackMessage('Porta energizada com sucesso! Saia imediatamente.');
+  setFeedbackMessage(MESSAGES.doorEnergized);
 }
 
 function tryMove(deltaX, deltaY) {
@@ -349,9 +365,9 @@ function tryMove(deltaX, deltaY) {
 
   if (nextTile === TILE_TYPES.GOAL && !gameState.doorEnergized) {
     if (gameState.hasCore) {
-      setFeedbackMessage('Fique ao lado da porta e pressione E para energizar.');
+      setFeedbackMessage(MESSAGES.blockedNeedEnergize);
     } else {
-      setFeedbackMessage('A porta está sem energia. Encontre o núcleo.');
+      setFeedbackMessage(MESSAGES.blockedNeedEnergy);
     }
     return;
   }
@@ -371,12 +387,12 @@ function tryMove(deltaX, deltaY) {
   }
 
   if (nextTile === TILE_TYPES.GOAL) {
-    finishGame('win', 'Você energizou a porta com o núcleo e escapou da instalação.');
+    finishGame('win', MESSAGES.win);
     return;
   }
 
   if (nextTile === TILE_TYPES.HAZARD) {
-    finishGame('lose', 'As chamas consumiram a rota de fuga antes da extração.');
+    finishGame('lose', MESSAGES.hazardLose);
     return;
   }
 
