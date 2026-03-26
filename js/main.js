@@ -7,7 +7,8 @@ const gameState = {
   timerId: null,
   droneTimerId: null,
   layout: cloneLayout(LEVEL_ONE.initialLayout),
-  coreActivated: false,
+  hasCore: false,
+  doorEnergized: false,
   drone: { ...LEVEL_ONE.drone.start, direction: LEVEL_ONE.drone.direction }
 };
 
@@ -125,46 +126,57 @@ function clearStepState(stepElement) {
 function updateProgressUi() {
   [progressCoreElement, progressActivateElement, progressExitElement].forEach(clearStepState);
 
-  if (!gameState.coreActivated) {
+  if (!gameState.hasCore && !gameState.doorEnergized) {
     progressCoreElement.classList.add('active');
-  } else {
-    progressCoreElement.classList.add('completed');
-    progressActivateElement.classList.add('completed');
-    progressExitElement.classList.add('active');
-  }
-}
-
-function isAdjacentToCore() {
-  if (gameState.coreActivated) {
-    return false;
-  }
-
-  const distanceX = Math.abs(gameState.player.x - LEVEL_ONE.core.x);
-  const distanceY = Math.abs(gameState.player.y - LEVEL_ONE.core.y);
-  return distanceX + distanceY === 1;
-}
-
-function updateCoreHighlight() {
-  const coreCell = getCellElement(LEVEL_ONE.core.x, LEVEL_ONE.core.y);
-  if (!coreCell) {
     return;
   }
 
-  coreCell.classList.toggle('adjacent', isAdjacentToCore());
+  progressCoreElement.classList.add('completed');
+
+  if (!gameState.doorEnergized) {
+    progressActivateElement.classList.add('active');
+    return;
+  }
+
+  progressActivateElement.classList.add('completed');
+  progressExitElement.classList.add('active');
+}
+
+function isAdjacentToExit() {
+  const distanceX = Math.abs(gameState.player.x - LEVEL_ONE.exit.x);
+  const distanceY = Math.abs(gameState.player.y - LEVEL_ONE.exit.y);
+  return distanceX + distanceY === 1;
+}
+
+function updateDoorHighlight() {
+  const exitCell = getCellElement(LEVEL_ONE.exit.x, LEVEL_ONE.exit.y);
+  if (!exitCell) {
+    return;
+  }
+
+  const doorReady = isAdjacentToExit() && gameState.hasCore && !gameState.doorEnergized;
+  exitCell.classList.toggle('ready', doorReady);
 }
 
 function updateMissionUi() {
   missionTextElement.textContent = LEVEL_ONE.mission;
   timerTextElement.textContent = `${gameState.timeLeft}s`;
-  statusTextElement.textContent = gameState.coreActivated ? 'Desbloqueada' : 'Bloqueada';
+
+  if (gameState.doorEnergized) {
+    statusTextElement.textContent = 'Energizada';
+  } else if (gameState.hasCore) {
+    statusTextElement.textContent = 'Pronta para energizar';
+  } else {
+    statusTextElement.textContent = 'Sem energia';
+  }
 
   const exitCell = getCellElement(LEVEL_ONE.exit.x, LEVEL_ONE.exit.y);
   if (exitCell) {
-    exitCell.classList.toggle('unlocked', gameState.coreActivated);
+    exitCell.classList.toggle('unlocked', gameState.doorEnergized);
   }
 
-  appRootElement.classList.toggle('urgent', gameState.coreActivated);
-  updateCoreHighlight();
+  appRootElement.classList.toggle('urgent', gameState.doorEnergized);
+  updateDoorHighlight();
   updateProgressUi();
 }
 
@@ -252,17 +264,22 @@ function updateContextFeedback() {
     return;
   }
 
-  if (isAdjacentToCore()) {
-    setFeedbackMessage('Pressione E para ativar o núcleo.');
+  if (gameState.doorEnergized) {
+    setFeedbackMessage('Porta energizada! Colapso crítico, fuja agora.');
     return;
   }
 
-  if (gameState.coreActivated) {
-    setFeedbackMessage('Colapso crítico! Saia o mais rápido possível.');
+  if (isAdjacentToExit() && gameState.hasCore) {
+    setFeedbackMessage('Pressione E para energizar a porta com o núcleo.');
     return;
   }
 
-  setFeedbackMessage('Evite o drone e localize o núcleo.');
+  if (gameState.hasCore) {
+    setFeedbackMessage('Leve o núcleo até a porta de extração.');
+    return;
+  }
+
+  setFeedbackMessage('Encontre o núcleo e evite o drone.');
 }
 
 function resetGameState() {
@@ -270,7 +287,8 @@ function resetGameState() {
   gameState.player = { ...LEVEL_ONE.start };
   gameState.timeLeft = LEVEL_ONE.timeLimit;
   gameState.layout = cloneLayout(LEVEL_ONE.initialLayout);
-  gameState.coreActivated = false;
+  gameState.hasCore = false;
+  gameState.doorEnergized = false;
   gameState.drone = { ...LEVEL_ONE.drone.start, direction: LEVEL_ONE.drone.direction };
 }
 
@@ -292,21 +310,28 @@ function resetGame() {
   startDronePatrol();
 }
 
-function activateCore() {
-  if (!isAdjacentToCore()) {
-    return;
-  }
-
-  gameState.coreActivated = true;
+function collectCore() {
+  gameState.hasCore = true;
   setTile(LEVEL_ONE.core.x, LEVEL_ONE.core.y, TILE_TYPES.FLOOR);
 
   const coreCell = getCellElement(LEVEL_ONE.core.x, LEVEL_ONE.core.y);
   if (coreCell) {
-    coreCell.classList.remove('item', 'adjacent');
+    coreCell.classList.remove('item');
   }
 
   updateMissionUi();
-  setFeedbackMessage('Núcleo ativado. O sistema entrou em colapso total! Corra para a saída.');
+  setFeedbackMessage('Núcleo coletado. Leve até a porta de extração.');
+}
+
+function energizeDoor() {
+  if (!gameState.hasCore || gameState.doorEnergized || !isAdjacentToExit()) {
+    return;
+  }
+
+  gameState.hasCore = false;
+  gameState.doorEnergized = true;
+  updateMissionUi();
+  setFeedbackMessage('Porta energizada com sucesso! Saia imediatamente.');
 }
 
 function tryMove(deltaX, deltaY) {
@@ -318,15 +343,16 @@ function tryMove(deltaX, deltaY) {
   const nextY = gameState.player.y + deltaY;
   const nextTile = getTile(nextX, nextY);
 
-  if (nextTile === undefined || nextTile === TILE_TYPES.WALL || nextTile === TILE_TYPES.ITEM) {
-    if (nextTile === TILE_TYPES.ITEM) {
-      setFeedbackMessage('Núcleo detectado. Fique ao lado dele e pressione E.');
-    }
+  if (nextTile === undefined || nextTile === TILE_TYPES.WALL) {
     return;
   }
 
-  if (nextTile === TILE_TYPES.GOAL && !gameState.coreActivated) {
-    setFeedbackMessage('Saída bloqueada. Ative o núcleo primeiro.');
+  if (nextTile === TILE_TYPES.GOAL && !gameState.doorEnergized) {
+    if (gameState.hasCore) {
+      setFeedbackMessage('Fique ao lado da porta e pressione E para energizar.');
+    } else {
+      setFeedbackMessage('A porta está sem energia. Encontre o núcleo.');
+    }
     return;
   }
 
@@ -338,8 +364,14 @@ function tryMove(deltaX, deltaY) {
     return;
   }
 
+  if (nextTile === TILE_TYPES.ITEM) {
+    collectCore();
+    updateContextFeedback();
+    return;
+  }
+
   if (nextTile === TILE_TYPES.GOAL) {
-    finishGame('win', 'Você ativou o núcleo, desviou do drone e escapou da instalação.');
+    finishGame('win', 'Você energizou a porta com o núcleo e escapou da instalação.');
     return;
   }
 
@@ -373,7 +405,8 @@ function handleKeydown(event) {
     tryMove(1, 0);
   } else if (key === INTERACTION_KEY) {
     event.preventDefault();
-    activateCore();
+    energizeDoor();
+    updateContextFeedback();
   }
 }
 

@@ -39,8 +39,8 @@ function createLevelConfig() {
   return {
     columns: initialLayout[0].length,
     rows: initialLayout.length,
-    timeLimit: 45,
-    mission: 'Recupere e ative o núcleo para escapar.',
+    timeLimit: 75,
+    mission: 'Coletar núcleo, energizar porta e escapar.',
     start: { x: 1, y: 1 },
     initialLayout,
     exit: findTilePosition(initialLayout, TILE_TYPES.GOAL),
