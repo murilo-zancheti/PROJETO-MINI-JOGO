@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Instalação Instável</title>
+    <link rel="stylesheet" href="css/style.css" />
+  </head>
+  <body>
+    <main class="app" id="app-root">
+      <section class="panel screen active" id="start-screen">
+        <div class="card">
+          <h1>Instalação Instável</h1>
+          <p>
+            Recupere o núcleo, energize a porta e escape antes do colapso final do sistema.
+          </p>
+          <button id="start-button" type="button">Iniciar missão</button>
+        </div>
+      </section>
+
+      <section class="panel screen" id="game-screen" aria-live="polite">
+        <header class="hud">
+          <div class="hud-block hud-block-wide">
+            <strong>Missão:</strong>
+            <span id="mission-text">Coletar núcleo, energizar porta e escapar.</span>
+          </div>
+          <div class="hud-block">
+            <strong>Tempo:</strong>
+            <span id="timer-text">75s</span>
+          </div>
+          <div class="hud-block">
+            <strong>Porta:</strong>
+            <span id="status-text">Sem energia</span>
+          </div>
+        </header>
+
+        <div class="mission-progress" aria-label="Progresso da missão">
+          <span class="progress-step" id="progress-core">Coletar núcleo</span>
+          <span class="progress-step" id="progress-activate">Energizar porta</span>
+          <span class="progress-step" id="progress-exit">Escapar</span>
+        </div>
+
+        <p class="message" id="feedback-text" role="status" aria-live="polite">
+          Encontre o núcleo e evite o drone.
+        </p>
+
+        <div class="legend" aria-label="Legenda do mapa">
+          <span><i class="legend-swatch player-swatch"></i>Jogador</span>
+          <span><i class="legend-swatch item-swatch"></i>Núcleo</span>
+          <span><i class="legend-swatch exit-swatch"></i>Porta</span>
+          <span><i class="legend-swatch drone-swatch"></i>Drone</span>
+          <span><i class="legend-swatch fire-swatch"></i>Perigo</span>
+        </div>
+
+        <div class="game-shell">
+          <div class="game-board" id="game-board">
+            <div class="player" id="player" aria-label="Jogador"></div>
+            <div class="drone" id="drone" aria-label="Drone de patrulha"></div>
+          </div>
+        </div>
+
+        <div class="controls">
+          <p>Use setas/WASD para mover e pressione E para energizar a porta.</p>
+          <button id="restart-button" type="button">Reiniciar missão</button>
+        </div>
+      </section>
+
+      <section class="panel screen" id="end-screen">
+        <div class="card">
+          <h2 id="end-title">Fim</h2>
+          <p id="end-message"></p>
+          <button id="play-again-button" type="button">Jogar novamente</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="js/map.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>
